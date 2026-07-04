@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Log SQLite Guard"
+  short_description: "Diagnose and stop Codex TRACE sqlite log churn"
+  default_prompt: "Use $codex-log-sqlite-guard to check and safely mitigate Codex logs_2.sqlite high-frequency TRACE writes."
