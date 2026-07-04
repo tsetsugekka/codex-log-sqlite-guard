@@ -1,6 +1,6 @@
 ---
 name: codex-log-sqlite-guard
-description: Diagnose and mitigate Codex Desktop high-frequency TRACE writes to ~/.codex/logs_2.sqlite. Use when a user asks whether Codex is writing logs_2.sqlite, logs_2.sqlite-wal, TRACE logs, SQLite logs, disk/SSD wear, Codex log churn, Codex disk high-frequency writes, or wants a safe workflow to stop the writes, compact the SQLite file, verify after restarting or updating Codex, and clean up temporary backups.
+description: 诊断并缓解 Codex Desktop 对 ~/.codex/logs_2.sqlite 的 TRACE 日志高频写入，适用于 logs_2.sqlite / logs_2.sqlite-wal 持续增长、SQLite 日志、磁盘或 SSD 高频写入、Codex log churn 等问题；包含只读诊断、容量评估、备份选择、SQLite trigger 拦截、手动重启后验证、Codex 更新后复验、VACUUM 压缩和备份清理。Also supports English queries about Codex TRACE logs and disk writes.
 ---
 
 # Codex Log SQLite Guard
@@ -186,4 +186,3 @@ python3 scripts/codex_log_sqlite_guard.py drop-trigger
 ```
 
 如果用户保留了修复前备份，并想完整恢复数据库，必须先要求用户手动关闭 Codex Desktop。然后再用备份替换 `~/.codex/logs_2.sqlite`，并移除活动库对应的 `-wal`/`-shm` 文件。没有明确确认前，不要执行完整恢复。
-

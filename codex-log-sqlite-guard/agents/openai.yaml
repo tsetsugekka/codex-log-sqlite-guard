@@ -1,4 +1,4 @@
 interface:
-  display_name: "Codex Log SQLite Guard"
-  short_description: "Diagnose and stop Codex TRACE sqlite log churn"
-  default_prompt: "Use $codex-log-sqlite-guard to check and safely mitigate Codex logs_2.sqlite high-frequency TRACE writes."
+  display_name: "Codex 硬盘写入修复"
+  short_description: "诊断并缓解 Codex TRACE 日志高频写盘"
+  default_prompt: "使用 $codex-log-sqlite-guard 检查 Codex 是否在高频写入 logs_2.sqlite，并按安全流程修复、验证、压缩和清理备份。"
