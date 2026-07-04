@@ -1,107 +1,18 @@
 # Codex Log SQLite Guard
 
 <p align="center">
-  <strong>Diagnose, stop, verify, compact, and clean up Codex <code>logs_2.sqlite</code> TRACE log churn.</strong>
+  <strong>诊断、拦截、验证、压缩并清理 Codex <code>logs_2.sqlite</code> TRACE 日志高频写入。</strong>
 </p>
 
 <p align="center">
-  <a href="#english">English</a> |
   <a href="#中文">中文</a> |
+  <a href="#english">English</a> |
   <a href="#日本語">日本語</a>
 </p>
 
 <p align="center">
   <code>Codex Skill</code> · <code>SQLite WAL</code> · <code>Manual restart required</code> · <code>Backup-aware</code>
 </p>
-
----
-
-## English
-
-### What This Is
-
-**Codex Log SQLite Guard** is a shareable Codex skill for diagnosing and safely mitigating high-frequency `TRACE` log writes to:
-
-```text
-~/.codex/logs_2.sqlite
-```
-
-It is designed for the failure mode where Codex Desktop continuously appends detailed local logs to SQLite/WAL files, causing rapid disk writes and a large `logs_2.sqlite` database.
-
-### What It Does
-
-| Phase | Purpose | Safety posture |
-|---|---|---|
-| Diagnose | Read file sizes, recent log levels, row counts, `MAX(id)`, WAL size, and WAL mtime | Read-only |
-| Capacity check | Estimate disk free space, backup cost, and likely `VACUUM` savings | Read-only |
-| Mitigate | Install a reversible SQLite trigger that blocks new rows in `logs` | Requires explicit user approval |
-| Verify | Sample before and after a manual Codex Desktop restart | Read-only after mitigation |
-| Compact | Run `VACUUM` and truncate WAL after writes are stopped | Requires explicit user approval |
-| Cleanup | Identify obsolete backups and ask before deletion | Requires explicit user approval |
-
-### Why Manual Restart?
-
-The skill deliberately tells the user to manually quit and reopen Codex Desktop. It should not kill or restart Codex by itself unless the user explicitly asks for that behavior.
-
-This avoids interrupting active work and keeps process control in the user's hands.
-
-### Install
-
-Clone or download this repository, then copy the skill folder into your Codex skills directory:
-
-```bash
-cp -R codex-log-sqlite-guard ~/.codex/skills/
-```
-
-The skill folder is:
-
-```text
-codex-log-sqlite-guard/
-```
-
-After installation, ask Codex:
-
-```text
-Use $codex-log-sqlite-guard to check whether Codex is high-frequency writing TRACE logs to logs_2.sqlite, mitigate safely if needed, verify after restart, compact the database, and clean up unneeded backups.
-```
-
-### Direct Script Usage
-
-The bundled helper script can also be run directly:
-
-```bash
-python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py diagnose --sample-seconds 15
-python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py capacity
-python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py install-trigger --backup-dir ./work
-python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py vacuum
-python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py list-backups --dir ./work
-```
-
-### Backup Decision
-
-Before mitigation, the skill should compute the SQLite size and free disk space, then explain the tradeoff:
-
-| Choice | Benefit | Cost |
-|---|---|---|
-| Backup first | Best rollback path if something goes wrong | Temporarily consumes roughly another database-sized file |
-| No backup | Faster and uses less disk | You can drop the trigger, but cannot restore the old DB contents |
-
-### Rollback
-
-To stop blocking inserts:
-
-```bash
-python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py drop-trigger
-```
-
-If you kept a pre-mitigation backup and want a full database restore, close Codex Desktop manually first, then restore the backup file. Do not overwrite active SQLite files while Codex is running.
-
-### Safety Notes
-
-- The mitigation does not delete existing logs.
-- The trigger is reversible.
-- `VACUUM` should run only after high-frequency writes are confirmed stopped.
-- Backup files should be deleted only after final verification and explicit user confirmation.
 
 ---
 
@@ -175,6 +86,12 @@ python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py list-backups --
 | 先备份 | 出问题时回滚路径最好 | 临时多占用大约一个数据库大小的空间 |
 | 不备份 | 更快、更省空间 | 仍可删除 trigger，但不能恢复修复前的数据库内容 |
 
+### Codex 更新后是否需要重做
+
+这是一个可回滚的 SQLite trigger workaround，不是 Codex 上游源码级修复。trigger 保存在用户的 `~/.codex/logs_2.sqlite` 数据库里，所以如果 Codex 更新后仍沿用同一个数据库和 `logs` 表，通常不需要重新安装。
+
+每次更新 Codex 后建议先做只读诊断。只有在更新重建了 `logs_2.sqlite`、改变了 `logs` 表结构、删除了 trigger、恢复了旧数据库，或 `MAX(id)`/WAL 又开始高频增长时，才需要重新执行修复。
+
 ### 回滚
 
 如果只是取消拦截后续日志插入：
@@ -191,6 +108,101 @@ python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py drop-trigger
 - trigger 可以回滚。
 - 只有在确认高频写入停止后，才应该执行 `VACUUM`。
 - 备份文件只有在最终验证通过、并且用户明确确认后才应该删除。
+
+---
+
+## English
+
+### What This Is
+
+**Codex Log SQLite Guard** is a shareable Codex skill for diagnosing and safely mitigating high-frequency `TRACE` log writes to:
+
+```text
+~/.codex/logs_2.sqlite
+```
+
+It is designed for the failure mode where Codex Desktop continuously appends detailed local logs to SQLite/WAL files, causing rapid disk writes and a large `logs_2.sqlite` database.
+
+### What It Does
+
+| Phase | Purpose | Safety posture |
+|---|---|---|
+| Diagnose | Read file sizes, recent log levels, row counts, `MAX(id)`, WAL size, and WAL mtime | Read-only |
+| Capacity check | Estimate disk free space, backup cost, and likely `VACUUM` savings | Read-only |
+| Mitigate | Install a reversible SQLite trigger that blocks new rows in `logs` | Requires explicit user approval |
+| Verify | Sample before and after a manual Codex Desktop restart | Read-only after mitigation |
+| Compact | Run `VACUUM` and truncate WAL after writes are stopped | Requires explicit user approval |
+| Cleanup | Identify obsolete backups and ask before deletion | Requires explicit user approval |
+
+### Why Manual Restart?
+
+The skill deliberately tells the user to manually quit and reopen Codex Desktop. It should not kill or restart Codex by itself unless the user explicitly asks for that behavior.
+
+This avoids interrupting active work and keeps process control in the user's hands.
+
+### Install
+
+Clone or download this repository, then copy the skill folder into your Codex skills directory:
+
+```bash
+cp -R codex-log-sqlite-guard ~/.codex/skills/
+```
+
+The skill folder is:
+
+```text
+codex-log-sqlite-guard/
+```
+
+After installation, ask Codex:
+
+```text
+Use $codex-log-sqlite-guard to check whether Codex is high-frequency writing TRACE logs to logs_2.sqlite, mitigate safely if needed, verify after restart, compact the database, and clean up unneeded backups.
+```
+
+### Direct Script Usage
+
+The bundled helper script can also be run directly:
+
+```bash
+python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py diagnose --sample-seconds 15
+python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py capacity
+python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py install-trigger --backup-dir ./work
+python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py vacuum
+python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py list-backups --dir ./work
+```
+
+### Backup Decision
+
+Before mitigation, the skill should compute the SQLite size and free disk space, then explain the tradeoff:
+
+| Choice | Benefit | Cost |
+|---|---|---|
+| Backup first | Best rollback path if something goes wrong | Temporarily consumes roughly another database-sized file |
+| No backup | Faster and uses less disk | You can drop the trigger, but cannot restore the old DB contents |
+
+### Codex Updates
+
+This is a reversible SQLite trigger workaround, not an official upstream source-code fix. The trigger is stored inside the user's `~/.codex/logs_2.sqlite` database, so a Codex app update usually does not require reinstalling it if the same database and `logs` table are preserved.
+
+Re-run the read-only diagnosis after updating Codex. Reinstall the trigger only if the update rebuilt `logs_2.sqlite`, changed the `logs` table schema, removed the trigger, restored an old database, or high-frequency `MAX(id)`/WAL growth returns.
+
+### Rollback
+
+To stop blocking inserts:
+
+```bash
+python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py drop-trigger
+```
+
+If you kept a pre-mitigation backup and want a full database restore, close Codex Desktop manually first, then restore the backup file. Do not overwrite active SQLite files while Codex is running.
+
+### Safety Notes
+
+- The mitigation does not delete existing logs.
+- The trigger is reversible.
+- `VACUUM` should run only after high-frequency writes are confirmed stopped.
+- Backup files should be deleted only after final verification and explicit user confirmation.
 
 ---
 
@@ -264,6 +276,12 @@ python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py list-backups --
 | 先にバックアップ | 問題発生時の復旧パスが最も安全 | 一時的に DB と同程度の追加容量を使う |
 | バックアップなし | 速く、容量を節約できる | trigger は削除できるが、修正前 DB の内容には戻せない |
 
+### Codex 更新後について
+
+これは可逆的な SQLite trigger による workaround であり、Codex 本体の公式なソースコード修正ではありません。trigger はユーザーの `~/.codex/logs_2.sqlite` データベース内に保存されるため、Codex の更新後も同じ DB と `logs` テーブルが維持されていれば、通常は再インストール不要です。
+
+Codex 更新後は読み取り専用診断を再実行してください。`logs_2.sqlite` が再作成された、`logs` テーブル構造が変わった、trigger が削除された、古い DB を復元した、または `MAX(id)`/WAL の高頻度増加が戻った場合のみ、修正を再実行します。
+
 ### ロールバック
 
 新規 INSERT のブロックだけを解除する場合:
@@ -280,3 +298,4 @@ python3 codex-log-sqlite-guard/scripts/codex_log_sqlite_guard.py drop-trigger
 - trigger は削除して元に戻せます。
 - `VACUUM` は高頻度書き込みが停止したことを確認してから実行してください。
 - バックアップ削除は最終確認が終わり、ユーザーが明示的に同意した後だけ行ってください。
+
