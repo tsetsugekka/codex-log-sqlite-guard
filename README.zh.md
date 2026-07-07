@@ -100,6 +100,7 @@ Codex Log SQLite Guard 是一个面向 Codex Desktop 本地日志异常写入问
     README.md
     README.zh.md
     README.ja.md
+    LICENSE
 
 ## 语言
 
@@ -107,3 +108,6 @@ Codex Log SQLite Guard 是一个面向 Codex Desktop 本地日志异常写入问
   * 中文：`README.zh.md`
   * 日本語：`README.ja.md`
 
+## 许可证
+
+MIT

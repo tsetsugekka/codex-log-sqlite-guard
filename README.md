@@ -100,6 +100,7 @@ Use `--db PATH` only when the target database is not the default `~/.codex/logs_
     README.md
     README.zh.md
     README.ja.md
+    LICENSE
 
 ## Languages
 
@@ -107,3 +108,6 @@ Use `--db PATH` only when the target database is not the default `~/.codex/logs_
   * 中文：`README.zh.md`
   * 日本語：`README.ja.md`
 
+## License
+
+MIT
